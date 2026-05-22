@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import logging
 import re
 from typing import Iterable
 
 import config
 import gemini_client
 from levels import Level, Verification
+
+
+log = logging.getLogger("mipt_prompts.judge")
 
 
 def _contains(text: str, flag: str) -> bool:
@@ -31,9 +35,16 @@ def _judge(level: Level, conversation: list[dict], last_response: str) -> bool:
     transcript = "\n\n".join(transcript_parts)
 
     prompt = v.judge_prompt.replace("{{conversation}}", transcript).replace("{{response}}", last_response)
-    prompt += "\n\nОтветь строго одним словом: YES или NO."
-    raw = gemini_client.generate_simple(model, prompt).strip().upper()
-    return raw.startswith("YES")
+    prompt += "\n\nСначала одно-два предложения краткого рассуждения. Последней строкой - вердикт строго одним словом: YES или NO."
+    raw = gemini_client.generate_simple(model, prompt).strip()
+    last_line = raw.splitlines()[-1].strip().upper() if raw else ""
+    verdict = last_line.startswith("YES")
+    log.info(
+        "level=%s verdict=%s reasoning=%s",
+        level.id, "YES" if verdict else "NO",
+        " | ".join(line.strip() for line in raw.splitlines() if line.strip())[:600],
+    )
+    return verdict
 
 
 def check(level: Level, conversation: list[dict], last_response: str) -> bool:
