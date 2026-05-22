@@ -113,6 +113,7 @@ async def level_view(level_id: str, request: Request):
                     history.append({"role": m.role, "content": m.content})
         remaining = quota.remaining(s, user)
     template = "level_chat.html" if level.multi_turn else "level_single.html"
+    next_id = levels.next_level_id(level)
     return templates.TemplateResponse(
         request, template,
         {
@@ -123,6 +124,8 @@ async def level_view(level_id: str, request: Request):
             "history": history,
             "remaining": remaining,
             "max_turns": config.MAX_CONVERSATION_TURNS,
+            "next_url": f"/level/{next_id}" if next_id else None,
+            "track_url": f"/track/{level.track}",
         },
     )
 
@@ -256,12 +259,17 @@ async def level_submit(level_id: str, request: Request):
                 s.add(Solved(user_id=user.id, level_id=level.id, points=level.points))
         s.commit()
 
-    return {
+    payload = {
         "reply": reply_for_user,
         "solved": solved,
         "afterword": level.afterword if solved else "",
         "points": level.points if solved else 0,
     }
+    if solved:
+        nxt = levels.next_level_id(level)
+        payload["next_url"] = f"/level/{nxt}" if nxt else None
+        payload["track_url"] = f"/track/{level.track}"
+    return payload
 
 
 @router.post("/level/{level_id}/submit_flag")
@@ -286,15 +294,26 @@ async def level_submit_flag(level_id: str, request: Request):
         if not _level_unlocked(track, level.id, solved_ids):
             raise HTTPException(status_code=403, detail="locked")
         if level.id in solved_ids:
-            return {"solved": True, "already": True, "afterword": level.afterword, "points": 0}
+            nxt = levels.next_level_id(level)
+            return {
+                "solved": True,
+                "already": True,
+                "afterword": level.afterword,
+                "points": 0,
+                "next_url": f"/level/{nxt}" if nxt else None,
+                "track_url": f"/track/{level.track}",
+            }
 
         ok = verifier.check_submitted_flag(level, submitted)
         if ok:
             s.add(Solved(user_id=user.id, level_id=level.id, points=level.points))
             s.commit()
+            nxt = levels.next_level_id(level)
             return {
                 "solved": True,
                 "afterword": level.afterword,
                 "points": level.points,
+                "next_url": f"/level/{nxt}" if nxt else None,
+                "track_url": f"/track/{level.track}",
             }
     return {"solved": False, "error": "Неверный флаг."}

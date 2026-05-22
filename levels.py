@@ -132,6 +132,19 @@ def get_level(level_id: str) -> Optional[Level]:
     return _levels.get(level_id)
 
 
+def next_level_id(level: Level) -> Optional[str]:
+    track = _tracks.get(level.track)
+    if track is None:
+        return None
+    found = False
+    for lvl in track.levels:
+        if found:
+            return lvl.id
+        if lvl.id == level.id:
+            found = True
+    return None
+
+
 def levels_unlocked_for(track: Track, solved_ids: set[str]) -> list[tuple[Level, bool]]:
     if track.unlock_mode == "free":
         return [(lvl, True) for lvl in track.levels]

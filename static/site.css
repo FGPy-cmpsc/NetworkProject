@@ -301,6 +301,9 @@ button.ghost { background: var(--paper); color: var(--fg); }
 .leaderboard tbody tr:last-child td { border-bottom: none; }
 .leaderboard td { font-family: 'Space Mono', monospace; }
 
+.next-nav { margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap; }
+.next-nav .cta-big { margin-right: 0; }
+
 #flag-box {
   display: flex; gap: 10px;
   background: var(--paper); border: 3px solid var(--line);

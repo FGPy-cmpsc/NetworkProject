@@ -43,16 +43,23 @@ const flagResult = document.getElementById('flag-result');
 if (ALREADY) {
   send.disabled = true;
   if (flagBtn) flagBtn.disabled = true;
-  result.hidden = false;
-  result.className = 'result ok';
-  result.innerHTML = '<p>Уровень уже пройден.</p>';
+  showSolved({points: {{ level.points }}, afterword: {{ level.afterword|tojson }}, next_url: {{ next_url|tojson }}, track_url: {{ track_url|tojson }}});
 }
 
 function showSolved(data) {
   result.hidden = false;
   result.className = 'result ok';
-  result.innerHTML = '<h3>Уровень пройден, +' + data.points + ' очков</h3>'
-    + '<div class="afterword">' + escapeHtml(data.afterword) + '</div>';
+  let html = '<h3>Уровень пройден, +' + data.points + ' очков</h3>'
+    + '<div class="afterword">' + escapeHtml(data.afterword) + '</div>'
+    + '<div class="next-nav">';
+  if (data.next_url) {
+    html += '<a class="cta-big" href="' + data.next_url + '">Следующий уровень →</a>';
+  }
+  if (data.track_url) {
+    html += '<a class="cta-big secondary" href="' + data.track_url + '">К треку</a>';
+  }
+  html += '</div>';
+  result.innerHTML = html;
   send.disabled = true;
   if (flagBtn) flagBtn.disabled = true;
 }

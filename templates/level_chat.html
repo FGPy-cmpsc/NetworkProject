@@ -55,11 +55,22 @@ function append(role, text) {
   chat.scrollTop = chat.scrollHeight;
 }
 
-if (ALREADY) {
-  send.disabled = true;
+function showSolved(data) {
   result.hidden = false;
   result.className = 'result ok';
-  result.innerHTML = '<p>Уровень уже пройден.</p>';
+  let html = '<h3>Задание пройдено, +' + data.points + ' очков</h3>'
+    + '<div class="afterword">' + escapeHtml(data.afterword) + '</div>'
+    + '<div class="next-nav">';
+  if (data.next_url) html += '<a class="cta-big" href="' + data.next_url + '">Следующее задание →</a>';
+  if (data.track_url) html += '<a class="cta-big secondary" href="' + data.track_url + '">К треку</a>';
+  html += '</div>';
+  result.innerHTML = html;
+  send.disabled = true;
+}
+
+if (ALREADY) {
+  send.disabled = true;
+  showSolved({points: {{ level.points }}, afterword: {{ level.afterword|tojson }}, next_url: {{ next_url|tojson }}, track_url: {{ track_url|tojson }}});
 }
 
 send.addEventListener('click', async () => {
@@ -86,11 +97,7 @@ send.addEventListener('click', async () => {
       pending.textContent = data.reply || '';
       if (typeof data.remaining === 'number') quotaEl.textContent = data.remaining;
       if (data.solved) {
-        result.hidden = false;
-        result.className = 'result ok';
-        result.innerHTML = '<h3>Задание пройдено, +' + data.points + ' очков</h3>'
-          + '<div class="afterword">' + escapeHtml(data.afterword) + '</div>';
-        send.disabled = true;
+        showSolved(data);
         return;
       }
     }
