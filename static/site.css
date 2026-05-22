@@ -166,3 +166,7 @@ button.ghost { background: none; color: var(--fg); border-color: var(--line); }
 .leaderboard th { background: var(--soft); }
 
 .hero { margin-bottom: 24px; }
+
+#flag-box { display: flex; gap: 8px; align-items: center; }
+#flag-box input { flex: 1; }
+#flag-box button { margin-top: 0; }

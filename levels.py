@@ -33,6 +33,7 @@ class Level:
     input_filters: tuple[str, ...]
     output_filters: tuple[str, ...]
     judge_on_response: bool
+    submit_mode: str
 
 
 @dataclass(frozen=True)
@@ -75,6 +76,7 @@ def _load_level(path: str, track_id: str) -> Level:
         input_filters=tuple(data.get("input_filters", []) or []),
         output_filters=tuple(data.get("output_filters", []) or []),
         judge_on_response=bool(data.get("judge_on_response", False)),
+        submit_mode=data.get("submit_mode", "auto"),
     )
 
 

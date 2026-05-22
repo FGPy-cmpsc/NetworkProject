@@ -47,6 +47,13 @@ def check(level: Level, conversation: list[dict], last_response: str) -> bool:
     return False
 
 
+def check_submitted_flag(level: Level, submitted: str) -> bool:
+    v = level.verification
+    if v.flag is None:
+        return False
+    return v.flag.strip().lower() == submitted.strip().lower()
+
+
 def apply_input_filters(text: str, patterns: Iterable[str]) -> bool:
     for p in patterns:
         if re.search(p, text, re.IGNORECASE):

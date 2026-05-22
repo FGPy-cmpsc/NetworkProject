@@ -5,30 +5,56 @@
 <p class="lvl-meta">{{ level.points }} очков · модель: <code>{{ level.model }}</code></p>
 <p class="description">{{ level.description }}</p>
 
+<h2>Диалог с моделью</h2>
 <div id="game">
-  <label for="msg">Ваше сообщение модели:</label>
-  <textarea id="msg" rows="6" maxlength="4000"></textarea>
+  <label for="msg">Ваше сообщение:</label>
+  <textarea id="msg" rows="5" maxlength="4000"></textarea>
   <button id="send">Отправить</button>
   <span class="quota">осталось запросов: <span id="quota">{% if remaining < 0 %}∞{% else %}{{ remaining }}{% endif %}</span></span>
 </div>
 
 <div id="reply" class="reply" hidden></div>
+
+{% if level.submit_mode == "manual" %}
+<h2>Сдать флаг</h2>
+<p class="lead">Когда вытащите секрет из модели - введите его сюда.</p>
+<div id="flag-box">
+  <input type="text" id="flag" placeholder="секретное слово" autocomplete="off" maxlength="500">
+  <button id="flag-submit">Проверить</button>
+</div>
+<div id="flag-result" class="reply" hidden></div>
+{% endif %}
+
 <div id="result" class="result" hidden></div>
 
 <script>
 const LEVEL_ID = {{ level.id|tojson }};
 const ALREADY = {{ already_solved|tojson }};
+const MANUAL = {{ (level.submit_mode == "manual")|tojson }};
 const msg = document.getElementById('msg');
 const send = document.getElementById('send');
 const reply = document.getElementById('reply');
 const result = document.getElementById('result');
 const quotaEl = document.getElementById('quota');
+const flagEl = document.getElementById('flag');
+const flagBtn = document.getElementById('flag-submit');
+const flagResult = document.getElementById('flag-result');
 
 if (ALREADY) {
   send.disabled = true;
+  if (flagBtn) flagBtn.disabled = true;
   result.hidden = false;
   result.className = 'result ok';
   result.innerHTML = '<p>Уровень уже пройден.</p>';
+}
+
+function showSolved(data) {
+  result.hidden = false;
+  result.className = 'result ok';
+  result.innerHTML = '<h3>Уровень пройден, +' + data.points + ' очков</h3>'
+    + '<div class="afterword">' + escapeHtml(data.afterword) + '</div>';
+  send.disabled = true;
+  if (flagBtn) flagBtn.disabled = true;
 }
 
 send.addEventListener('click', async () => {
@@ -37,7 +63,6 @@ send.addEventListener('click', async () => {
   reply.className = 'reply';
   reply.textContent = 'Отправка...';
   send.disabled = true;
-  result.hidden = true;
   try {
     const r = await fetch('/level/' + LEVEL_ID + '/submit', {
       method: 'POST',
@@ -50,13 +75,7 @@ send.addEventListener('click', async () => {
       reply.textContent = 'Ошибка: ' + (data.error || r.statusText);
     } else {
       reply.textContent = data.reply || '';
-      if (typeof data.remaining === 'number') quotaEl.textContent = data.remaining;
-      if (data.solved) {
-        result.hidden = false;
-        result.className = 'result ok';
-        result.innerHTML = '<h3>Уровень пройден, +' + data.points + ' очков</h3>'
-          + '<div class="afterword">' + escapeHtml(data.afterword) + '</div>';
-      }
+      if (data.solved) showSolved(data);
     }
   } catch (e) {
     reply.className = 'reply err';
@@ -65,6 +84,40 @@ send.addEventListener('click', async () => {
     if (!ALREADY) send.disabled = false;
   }
 });
+
+if (flagBtn) {
+  flagBtn.addEventListener('click', async () => {
+    const val = flagEl.value.trim();
+    if (!val) return;
+    flagBtn.disabled = true;
+    flagResult.hidden = false;
+    flagResult.className = 'reply';
+    flagResult.textContent = 'Проверка...';
+    try {
+      const r = await fetch('/level/' + LEVEL_ID + '/submit_flag', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({flag: val})
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        flagResult.className = 'reply err';
+        flagResult.textContent = 'Ошибка: ' + (data.error || r.statusText);
+      } else if (data.solved) {
+        flagResult.hidden = true;
+        showSolved(data);
+      } else {
+        flagResult.className = 'reply err';
+        flagResult.textContent = data.error || 'Неверно. Продолжайте.';
+      }
+    } catch (e) {
+      flagResult.className = 'reply err';
+      flagResult.textContent = 'Сеть: ' + e.message;
+    } finally {
+      if (!ALREADY) flagBtn.disabled = false;
+    }
+  });
+}
 
 function escapeHtml(s) {
   return (s || '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));

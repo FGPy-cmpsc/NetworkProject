@@ -225,10 +225,11 @@ async def level_submit(level_id: str, request: Request):
     reply_for_user = verifier.apply_output_filters(raw_reply, level.output_filters)
 
     solved = False
-    try:
-        solved = verifier.check(level, conv_history, raw_reply)
-    except Exception:
-        log.exception("verifier failed for level %s", level.id)
+    if level.submit_mode == "auto":
+        try:
+            solved = verifier.check(level, conv_history, raw_reply)
+        except Exception:
+            log.exception("verifier failed for level %s", level.id)
 
     with SessionLocal() as s:
         if level.multi_turn:
@@ -261,3 +262,39 @@ async def level_submit(level_id: str, request: Request):
         "afterword": level.afterword if solved else "",
         "points": level.points if solved else 0,
     }
+
+
+@router.post("/level/{level_id}/submit_flag")
+async def level_submit_flag(level_id: str, request: Request):
+    user = _require_user(request)
+    level = levels.get_level(level_id)
+    if level is None:
+        raise HTTPException(status_code=404)
+    if level.submit_mode != "manual":
+        return JSONResponse({"error": "У этого уровня нет формы для сдачи флага."}, status_code=400)
+
+    data = await request.json()
+    submitted = (data.get("flag") or "").strip()
+    if not submitted:
+        return JSONResponse({"error": "Введите флаг."}, status_code=400)
+    if len(submitted) > 500:
+        return JSONResponse({"error": "Слишком длинно."}, status_code=400)
+
+    track = levels.get_track(level.track)
+    with SessionLocal() as s:
+        solved_ids = _solved_ids(s, user.id)
+        if not _level_unlocked(track, level.id, solved_ids):
+            raise HTTPException(status_code=403, detail="locked")
+        if level.id in solved_ids:
+            return {"solved": True, "already": True, "afterword": level.afterword, "points": 0}
+
+        ok = verifier.check_submitted_flag(level, submitted)
+        if ok:
+            s.add(Solved(user_id=user.id, level_id=level.id, points=level.points))
+            s.commit()
+            return {
+                "solved": True,
+                "afterword": level.afterword,
+                "points": level.points,
+            }
+    return {"solved": False, "error": "Неверный флаг."}
