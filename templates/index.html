@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MIPT Prompts - общение с Gemini AI</title>
+  <meta name="description" content="MIPT Prompts - простой веб-чат с нейросетью Google Gemini. Студенческий проект МФТИ для демонстрации работы языковых моделей.">
+  <meta name="keywords" content="MIPT, МФТИ, prompt, Gemini, нейросеть, AI, чат">
+  <style>
+    body { font-family: sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; color: #222; line-height: 1.5; }
+    h1 { margin-bottom: 8px; }
+    h2 { margin-top: 32px; }
+    section { margin-bottom: 24px; }
+    textarea { width: 100%; padding: 10px; font-size: 14px; box-sizing: border-box; }
+    button { padding: 10px 24px; font-size: 14px; cursor: pointer; margin-top: 8px; }
+    .reply { background: #f4f4f4; padding: 14px; border-radius: 6px; white-space: pre-wrap; margin-top: 18px; }
+    .err { color: #c00; }
+    .note { background: #fff4d6; padding: 10px 14px; border-radius: 6px; font-size: 14px; }
+    a { color: #0366d6; }
+    ol { padding-left: 22px; }
+    code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<h1>MIPT Prompts</h1>
+<p style="color:#666;font-size:13px;margin-top:0;">miptctfprompts.work.gd</p>
+<p>Простой веб-чат с нейросетью <strong>Google Gemini</strong>. Студенческий проект студента МФТИ.</p>
+
+<section>
+  <h2>Что это</h2>
+  <p>
+    Веб-интерфейс для общения с большой языковой моделью Google Gemini
+    (используется модель <code>gemini-2.5-flash</code>). Каждое сообщение
+    идёт через бэкенд на FastAPI к Vertex AI. Контекст между сообщениями
+    не сохраняется - каждый запрос обрабатывается отдельно.
+  </p>
+</section>
+
+<section>
+  <h2>Как работать</h2>
+  <ol>
+    <li>Введите вопрос или текст в поле ниже.</li>
+    <li>Нажмите кнопку <strong>«Отправить»</strong>.</li>
+    <li>Подождите несколько секунд - ответ появится под формой.</li>
+  </ol>
+  <p class="note">
+    <strong>Лимит:</strong> сайт обслуживается на личных API-кредитах автора,
+    поэтому действует общее ограничение - <strong>не более одного запроса
+    в минуту</strong> со всего сайта. Если получили ошибку «Лимит превышен» -
+    подождите указанное время и попробуйте снова.
+  </p>
+</section>
+
+<section>
+  <h2>Исходный код</h2>
+  <p>
+    Код проекта открыт и лежит на GitHub:
+    <a href="https://github.com/FGPy-cmpsc/NetworkProject" target="_blank" rel="noopener">github.com/FGPy-cmpsc/NetworkProject</a>.
+    В репозитории - FastAPI-приложение, проксирование запросов к Vertex AI
+    и конфигурация nginx + Let's Encrypt.
+  </p>
+</section>
+
+<h2>Попробовать</h2>
+<textarea id="msg" rows="5" placeholder="Введите сообщение..."></textarea>
+<button id="send">Отправить</button>
+<div id="reply" class="reply" hidden></div>
+
+<script>
+  const msgEl = document.getElementById('msg');
+  const replyEl = document.getElementById('reply');
+  const sendBtn = document.getElementById('send');
+  sendBtn.addEventListener('click', async () => {
+    if (!msgEl.value.trim()) return;
+    replyEl.hidden = false;
+    replyEl.className = 'reply';
+    replyEl.textContent = 'Отправка...';
+    sendBtn.disabled = true;
+    try {
+      const res = await fetch('/chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ message: msgEl.value })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        replyEl.className = 'reply err';
+        replyEl.textContent = 'Ошибка: ' + (data.error || res.statusText);
+      } else {
+        replyEl.textContent = data.reply;
+      }
+    } catch (e) {
+      replyEl.className = 'reply err';
+      replyEl.textContent = 'Ошибка сети: ' + e.message;
+    } finally {
+      sendBtn.disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>
