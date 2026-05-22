@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+<p class="crumb"><a href="/">К трекам</a> · <a href="/track/{{ track.id }}">{{ track.title }}</a></p>
+<h1>{{ level.title }}</h1>
+<p class="lvl-meta">{{ level.points }} очков · модель: <code>{{ level.model }}</code></p>
+<p class="description">{{ level.description }}</p>
+
+<div id="game">
+  <label for="msg">Ваше сообщение модели:</label>
+  <textarea id="msg" rows="6" maxlength="4000"></textarea>
+  <button id="send">Отправить</button>
+  <span class="quota">осталось запросов: <span id="quota">{% if remaining < 0 %}∞{% else %}{{ remaining }}{% endif %}</span></span>
+</div>
+
+<div id="reply" class="reply" hidden></div>
+<div id="result" class="result" hidden></div>
+
+<script>
+const LEVEL_ID = {{ level.id|tojson }};
+const ALREADY = {{ already_solved|tojson }};
+const msg = document.getElementById('msg');
+const send = document.getElementById('send');
+const reply = document.getElementById('reply');
+const result = document.getElementById('result');
+const quotaEl = document.getElementById('quota');
+
+if (ALREADY) {
+  send.disabled = true;
+  result.hidden = false;
+  result.className = 'result ok';
+  result.innerHTML = '<p>Уровень уже пройден.</p>';
+}
+
+send.addEventListener('click', async () => {
+  if (!msg.value.trim()) return;
+  reply.hidden = false;
+  reply.className = 'reply';
+  reply.textContent = 'Отправка...';
+  send.disabled = true;
+  result.hidden = true;
+  try {
+    const r = await fetch('/level/' + LEVEL_ID + '/submit', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: msg.value})
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      reply.className = 'reply err';
+      reply.textContent = 'Ошибка: ' + (data.error || r.statusText);
+    } else {
+      reply.textContent = data.reply || '';
+      if (typeof data.remaining === 'number') quotaEl.textContent = data.remaining;
+      if (data.solved) {
+        result.hidden = false;
+        result.className = 'result ok';
+        result.innerHTML = '<h3>Уровень пройден, +' + data.points + ' очков</h3>'
+          + '<div class="afterword">' + escapeHtml(data.afterword) + '</div>';
+      }
+    }
+  } catch (e) {
+    reply.className = 'reply err';
+    reply.textContent = 'Сеть: ' + e.message;
+  } finally {
+    if (!ALREADY) send.disabled = false;
+  }
+});
+
+function escapeHtml(s) {
+  return (s || '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+}
+</script>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="userline">
+  <span>Очки: <strong>{{ score }}</strong></span>
+  <span>Запросов на сегодня: <strong>{% if remaining < 0 %}безлимит{% else %}{{ remaining }}{% endif %}</strong></span>
+</section>
+
+<h1>Треки</h1>
+
+<div class="tracks">
+{% for row in tracks %}
+  <a class="track-card" href="/track/{{ row.track.id }}">
+    <h2>{{ row.track.title }}</h2>
+    <p>{{ row.track.description }}</p>
+    <p class="progress">Решено: {{ row.solved }} / {{ row.total }}</p>
+  </a>
+{% endfor %}
+</div>
+
+{% if tracks|length == 0 %}
+<p class="empty">Заданий пока нет.</p>
+{% endif %}
+{% endblock %}

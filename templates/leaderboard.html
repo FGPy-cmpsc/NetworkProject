@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Лидерборд</h1>
+{% if rows|length == 0 %}
+<p class="empty">Ещё никто не решал заданий.</p>
+{% else %}
+<table class="leaderboard">
+  <thead>
+    <tr><th>#</th><th>Никнейм</th><th>Решено</th><th>Очки</th></tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ r.nickname }}</td>
+      <td>{{ r.solved }}</td>
+      <td>{{ r.score }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

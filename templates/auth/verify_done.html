@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Подтверждение почты</h1>
+<p class="{% if ok %}msg-ok{% else %}err{% endif %}">{{ message }}</p>
+{% if ok %}<p><a href="/auth/login">Войти</a></p>{% endif %}
+{% endblock %}

@@ -1,8 +1,12 @@
+bcrypt==4.2.0
 fastapi==0.136.1
 google-genai==2.5.0
 httpx==0.28.1
 httpx-socks==0.11.0
+itsdangerous==2.2.0
 jinja2==3.1.4
 python-dotenv==1.2.2
 python-multipart==0.0.29
+PyYAML==6.0.2
+sqlalchemy==2.0.36
 uvicorn==0.47.0

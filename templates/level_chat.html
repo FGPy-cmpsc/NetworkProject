@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block content %}
+<p class="crumb"><a href="/">К трекам</a> · <a href="/track/{{ track.id }}">{{ track.title }}</a></p>
+<h1>{{ level.title }}</h1>
+<p class="lvl-meta">{{ level.points }} очков · модель: <code>{{ level.model }}</code> · до {{ max_turns }} сообщений за попытку</p>
+<p class="description">{{ level.description }}</p>
+
+<div id="chat" class="chat">
+{% for m in history %}
+  <div class="msg {% if m.role == 'user' %}user{% else %}model{% endif %}">
+    <div class="role">{% if m.role == 'user' %}вы{% else %}собеседник{% endif %}</div>
+    <div class="text"></div>
+  </div>
+{% endfor %}
+</div>
+
+<div id="game">
+  <label for="msg">Сообщение:</label>
+  <textarea id="msg" rows="3" maxlength="4000"></textarea>
+  <button id="send">Отправить</button>
+  <form action="/level/{{ level.id }}/reset" method="post" class="inline">
+    <button type="submit" class="ghost">Сбросить диалог</button>
+  </form>
+  <span class="quota">осталось запросов: <span id="quota">{% if remaining < 0 %}∞{% else %}{{ remaining }}{% endif %}</span></span>
+</div>
+
+<div id="result" class="result" hidden></div>
+
+<script>
+const LEVEL_ID = {{ level.id|tojson }};
+const ALREADY = {{ already_solved|tojson }};
+const HISTORY = {{ history|tojson }};
+const chat = document.getElementById('chat');
+const msgEl = document.getElementById('msg');
+const send = document.getElementById('send');
+const result = document.getElementById('result');
+const quotaEl = document.getElementById('quota');
+
+(function renderInitial() {
+  const nodes = chat.querySelectorAll('.msg .text');
+  HISTORY.forEach((m, i) => { if (nodes[i]) nodes[i].textContent = m.content; });
+})();
+
+function append(role, text) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + (role === 'user' ? 'user' : 'model');
+  const r = document.createElement('div');
+  r.className = 'role';
+  r.textContent = role === 'user' ? 'вы' : 'собеседник';
+  const t = document.createElement('div');
+  t.className = 'text';
+  t.textContent = text;
+  wrap.appendChild(r); wrap.appendChild(t);
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+if (ALREADY) {
+  send.disabled = true;
+  result.hidden = false;
+  result.className = 'result ok';
+  result.innerHTML = '<p>Уровень уже пройден.</p>';
+}
+
+send.addEventListener('click', async () => {
+  const text = msgEl.value.trim();
+  if (!text) return;
+  send.disabled = true;
+  append('user', text);
+  msgEl.value = '';
+  append('model', '...');
+  const lastNode = chat.querySelectorAll('.msg.model .text');
+  const pending = lastNode[lastNode.length - 1];
+
+  try {
+    const r = await fetch('/level/' + LEVEL_ID + '/submit', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: text})
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      pending.textContent = 'Ошибка: ' + (data.error || r.statusText);
+      pending.classList.add('err');
+    } else {
+      pending.textContent = data.reply || '';
+      if (typeof data.remaining === 'number') quotaEl.textContent = data.remaining;
+      if (data.solved) {
+        result.hidden = false;
+        result.className = 'result ok';
+        result.innerHTML = '<h3>Задание пройдено, +' + data.points + ' очков</h3>'
+          + '<div class="afterword">' + escapeHtml(data.afterword) + '</div>';
+        send.disabled = true;
+        return;
+      }
+    }
+  } catch (e) {
+    pending.textContent = 'Сеть: ' + e.message;
+    pending.classList.add('err');
+  } finally {
+    if (!ALREADY) send.disabled = false;
+  }
+});
+
+function escapeHtml(s) {
+  return (s || '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+}
+</script>
+{% endblock %}

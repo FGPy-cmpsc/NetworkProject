@@ -1,46 +1,31 @@
 import logging
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, HTMLResponse, PlainTextResponse, Response
-from fastapi.templating import Jinja2Templates
+
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse, PlainTextResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 import config
-import rate_limit
-from gemini_client import client
+import db
+import levels
+import routes_auth
+import routes_game
+import routes_misc
 
-logger = logging.getLogger("mipt_prompts")
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger("mipt_prompts")
+
+db.init_db()
+levels.load_all()
+log.info("loaded %d tracks", len(levels.all_tracks()))
+
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
-templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-
-@app.get("/")
-async def index(request: Request):
-    return templates.TemplateResponse(request, "index.html")
-
-
-@app.post("/chat")
-async def chat(request: Request):
-    data = await request.json()
-    message = (data.get("message") or "").strip()
-    if not message:
-        return JSONResponse({"error": "Пустое сообщение."}, status_code=400)
-
-    allowed, wait = await rate_limit.acquire(config.GLOBAL_RATE_LIMIT_SECONDS)
-    if not allowed:
-        return JSONResponse(
-            {"error": f"Лимит запросов превышен. Попробуйте через {wait} сек."},
-            status_code=429,
-        )
-
-    try:
-        resp = client.models.generate_content(
-            model=config.GEMINI_MODEL,
-            contents=message,
-        )
-        return {"reply": resp.text}
-    except Exception:
-        logger.exception("gemini call failed")
-        return JSONResponse({"error": "Внутренняя ошибка."}, status_code=500)
+app.include_router(routes_game.router)
+app.include_router(routes_auth.router, prefix="/auth")
+app.include_router(routes_misc.router)
 
 
 @app.get("/robots.txt", response_class=PlainTextResponse)
@@ -48,9 +33,11 @@ async def robots_txt():
     return (
         "User-agent: *\n"
         "Allow: /\n"
-        "Disallow: /chat\n"
+        "Disallow: /auth/\n"
+        "Disallow: /level/\n"
+        "Disallow: /profile\n"
         "\n"
-        f"Sitemap: https://{config.DOMAIN}/sitemap.xml\n"
+        f"Sitemap: {config.SITE_URL}/sitemap.xml\n"
     )
 
 
@@ -60,9 +47,14 @@ async def sitemap_xml():
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
         "  <url>\n"
-        f"    <loc>https://{config.DOMAIN}/</loc>\n"
+        f"    <loc>{config.SITE_URL}/</loc>\n"
         "    <changefreq>weekly</changefreq>\n"
         "    <priority>1.0</priority>\n"
+        "  </url>\n"
+        "  <url>\n"
+        f"    <loc>{config.SITE_URL}/leaderboard</loc>\n"
+        "    <changefreq>daily</changefreq>\n"
+        "    <priority>0.5</priority>\n"
         "  </url>\n"
         "</urlset>\n"
     )

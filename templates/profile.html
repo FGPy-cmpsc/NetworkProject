@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Профиль</h1>
+<p>Никнейм: <strong>{{ user.nickname }}</strong></p>
+<p>Email: {{ user.email }}</p>
+<p>Очки: <strong>{{ score }}</strong> · Решено уровней: <strong>{{ solved_count }}</strong></p>
+<p>Запросов сегодня осталось: <strong>{% if remaining < 0 %}безлимит{% else %}{{ remaining }}{% endif %}</strong></p>
+
+<h2>Код доступа</h2>
+<p>Одноразовый код снимает дневной лимит запросов навсегда.</p>
+{% if message %}
+<p class="msg-{{ message_kind }}">{{ message }}</p>
+{% endif %}
+<form method="post" action="/profile/redeem">
+  <input type="text" name="code" placeholder="код" autocomplete="off">
+  <button type="submit">Активировать</button>
+</form>
+{% endblock %}

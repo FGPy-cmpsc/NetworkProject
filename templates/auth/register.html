@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Регистрация</h1>
+{% if error %}<p class="err">{{ error }}</p>{% endif %}
+<form method="post" action="/auth/register" class="form">
+  <label>Email
+    <input type="email" name="email" required value="{{ values.get('email', '') }}">
+  </label>
+  <label>Никнейм (2-32 символа, буквы/цифры/_-)
+    <input type="text" name="nickname" required value="{{ values.get('nickname', '') }}">
+  </label>
+  <label>Пароль (8-128 символов)
+    <input type="password" name="password" required minlength="8" maxlength="128">
+  </label>
+  <button type="submit">Зарегистрироваться</button>
+</form>
+<p>Уже есть аккаунт? <a href="/auth/login">Войти</a></p>
+{% endblock %}

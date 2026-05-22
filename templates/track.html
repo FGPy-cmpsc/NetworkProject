@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<p class="crumb"><a href="/">К трекам</a></p>
+<h1>{{ track.title }}</h1>
+<p class="lead">{{ track.description }}</p>
+
+<ol class="levels">
+{% for row in rows %}
+  <li class="level-row {% if row.solved %}solved{% endif %} {% if not row.unlocked %}locked{% endif %}">
+    {% if row.unlocked %}
+      <a href="/level/{{ row.level.id }}">
+        <span class="lvl-title">{{ row.level.title }}</span>
+        <span class="lvl-meta">{{ row.level.points }} очков · {{ row.level.model }}</span>
+        {% if row.solved %}<span class="badge">решено</span>{% endif %}
+      </a>
+    {% else %}
+      <span>
+        <span class="lvl-title">{{ row.level.title }}</span>
+        <span class="lvl-meta">закрыто, пройдите предыдущий</span>
+      </span>
+    {% endif %}
+  </li>
+{% endfor %}
+</ol>
+{% endblock %}
