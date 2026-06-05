@@ -26,6 +26,14 @@ client = genai.Client(
 )
 
 
+_PERMISSIVE_SAFETY = [
+    types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_HARASSMENT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
+    types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold=types.HarmBlockThreshold.BLOCK_NONE),
+    types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
+    types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
+]
+
+
 def generate(
     model: str,
     user_text: str,
@@ -39,7 +47,10 @@ def generate(
             contents.append(types.Content(role=role, parts=[types.Part(text=m["content"])]))
     contents.append(types.Content(role="user", parts=[types.Part(text=user_text)]))
 
-    cfg = types.GenerateContentConfig(system_instruction=system_prompt) if system_prompt else None
+    cfg = types.GenerateContentConfig(
+        system_instruction=system_prompt,
+        safety_settings=_PERMISSIVE_SAFETY,
+    )
     resp = client.models.generate_content(
         model=model,
         contents=contents,
@@ -49,5 +60,6 @@ def generate(
 
 
 def generate_simple(model: str, prompt: str) -> str:
-    resp = client.models.generate_content(model=model, contents=prompt)
+    cfg = types.GenerateContentConfig(safety_settings=_PERMISSIVE_SAFETY)
+    resp = client.models.generate_content(model=model, contents=prompt, config=cfg)
     return resp.text or ""
